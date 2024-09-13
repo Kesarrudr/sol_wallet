@@ -1,0 +1,64 @@
+/* File: toastify-custom.css */
+.Toastify__toast-container {
+  width: 320px;
+}
+
+.Toastify__toast {
+  background-color: #ffffff;
+  color: #1a202c;
+  border-radius: 0.5rem;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.Toastify__toast--success {
+  background: linear-gradient(to right, #8b5cf6, #6366f1);
+  color: #ffffff;
+}
+
+.Toastify__toast--error {
+  background: linear-gradient(to right, #ef4444, #dc2626);
+  color: #ffffff;
+}
+
+.Toastify__toast--warning {
+  background: linear-gradient(to right, #f59e0b, #d97706);
+  color: #ffffff;
+}
+
+.Toastify__toast--info {
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  color: #ffffff;
+}
+
+.Toastify__progress-bar {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.Toastify__close-button {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+.Toastify__toast-body {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
