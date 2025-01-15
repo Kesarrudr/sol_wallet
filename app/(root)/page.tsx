@@ -55,14 +55,14 @@ const Component = () => {
   const [activeTab, setActiveTab] = useState("airdrop");
   const [airdropAmount, setAirdropAmount] = useState("1");
   const [walletAddress, setWalletAddress] = useState("");
-  const [message, setMessage] = useState("");
-  const [signature, setSignature] = useState("");
+  // const [message, setMessage] = useState("");
+  // const [signature, setSignature] = useState("");
   const [reciverAddress, setReciverAddress] = useState("");
   const [amount, setAmount] = useState("");
   const { loading: airdroploading, airdrop } = useAirDrop();
-  const { publicKey, sendTransaction, disconnect, signMessage } = useWallet();
+  const { publicKey, sendTransaction, disconnect } = useWallet();
   const [currentPublicKey, setCurrentPublicKey] = useState(publicKey);
-  const { loading: verifyloading, verifySignature } = useVerifySignature();
+  const { loading: verifyloading } = useVerifySignature();
   const { connection } = useConnection();
   const [showBalance, setShowBalance] = useState(true);
   const { network, setNetwork } = useNetwork();
@@ -104,31 +104,31 @@ const Component = () => {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
-  const sign = async () => {
-    if (!message) {
-      toast.error("Enter a Message to sign", {
-        position: "bottom-right",
-      });
-      return;
-    }
-    setShowCard(true);
-    const encodemessage = new TextEncoder().encode(message);
-    const sign = await signMessage?.(encodemessage);
-
-    if (sign) {
-      const status = await verifySignature(
-        publicKey!,
-        message,
-        Buffer.from(sign).toString("base64"),
-      );
-      if (status === 200) {
-        setSignature(Buffer.from(sign).toString("base64"));
-      }
-    } else {
-      setSignature("");
-    }
-  };
-
+  // const sign = async () => {
+  //   if (!message) {
+  //     toast.error("Enter a Message to sign", {
+  //       position: "bottom-right",
+  //     });
+  //     return;
+  //   }
+  //   setShowCard(true);
+  //   const encodemessage = new TextEncoder().encode(message);
+  //   const sign = await signMessage?.(encodemessage);
+  //
+  //   if (sign) {
+  //     const status = await verifySignature(
+  //       publicKey!,
+  //       message,
+  //       Buffer.from(sign).toString("base64"),
+  //     );
+  //     if (status === 200) {
+  //       setSignature(Buffer.from(sign).toString("base64"));
+  //     }
+  //   } else {
+  //     setSignature("");
+  //   }
+  // };
+  //
   async function makePayment(event: React.MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     setShowCard(true);

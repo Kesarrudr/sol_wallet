@@ -17,7 +17,13 @@ import {
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { TokenAddress } from "@/lib/token_address";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { ArrowDownUp, Clock, ExternalLink, AlertCircle } from "lucide-react";
+import {
+  ArrowDownUp,
+  Clock,
+  ExternalLink,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import {
@@ -45,6 +51,9 @@ export function SwapComponent() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [transactionFailed, setTransactionFailed] = useState<boolean>(false);
+  const [transactionStatus, setTransactionStatus] = useState<
+    "idle" | "pending" | "success" | "error"
+  >("idle");
 
   const { publicKey } = useWallet();
   const { sendSwapTransaction } = useSendSwapTransaction();
@@ -76,20 +85,37 @@ export function SwapComponent() {
   const handleSwap = async () => {
     if (publicKey) {
       try {
+        setTransactionStatus("pending");
         setTransactionFailed(false);
         const txHash = await sendSwapTransaction(quote, publicKey.toString());
         if (txHash === undefined) {
           setTransactionFailed(true);
+          setTransactionStatus("error");
+          setQuote("");
+          setBuyAmount("");
+          setSellAmount("");
           return;
         }
         setTransactionHash(txHash);
+        setTransactionStatus("success");
+        setQuote("");
+        setBuyAmount("");
+        setSellAmount("");
       } catch (error) {
         console.error("Swap Failed", error);
         setTransactionFailed(true);
+        setTransactionStatus("error");
+        setQuote("");
+        setBuyAmount("");
+        setSellAmount("");
       }
     } else {
       console.error("Public key is not available.");
       setTransactionFailed(true);
+      setTransactionStatus("error");
+      setQuote("");
+      setBuyAmount("");
+      setSellAmount("");
     }
   };
 
@@ -109,10 +135,10 @@ export function SwapComponent() {
               </Label>
               <div className="flex items-center space-x-2">
                 <Select value={sellToken} onValueChange={setSellToken}>
-                  <SelectTrigger className="w-[120px] bg-white dark:bg-gray-600 border-gray-200 dark:border-gray-700">
+                  <SelectTrigger className="w-[180px] bg-white dark:bg-gray-600 border-gray-200 dark:border-gray-700 h-[40px]">
                     <SelectValue placeholder="Select token">
                       {sellToken && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-1">
                           <Image
                             src={
                               Object.values(TokenAddress).find(
@@ -120,9 +146,9 @@ export function SwapComponent() {
                               )?.logoURI || "/placeholder.svg"
                             }
                             alt={sellToken}
-                            width={20}
-                            height={20}
-                            className="rounded-full"
+                            width={24}
+                            height={24}
+                            className="rounded-full object-contain"
                           />
                           <span className="font-medium">{sellToken}</span>
                         </div>
@@ -237,10 +263,10 @@ export function SwapComponent() {
               </Label>
               <div className="flex items-center space-x-2">
                 <Select value={buyToken} onValueChange={setBuyToken}>
-                  <SelectTrigger className="w-[120px] bg-white dark:bg-gray-600 border-gray-200 dark:border-gray-700">
+                  <SelectTrigger className="w-[180px] bg-white dark:bg-gray-600 border-gray-200 dark:border-gray-700 h-[40px]">
                     <SelectValue placeholder="Select token">
                       {buyToken && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 px-1">
                           <Image
                             src={
                               Object.values(TokenAddress).find(
@@ -248,9 +274,9 @@ export function SwapComponent() {
                               )?.logoURI || "/placeholder.svg"
                             }
                             alt={buyToken}
-                            width={20}
-                            height={20}
-                            className="rounded-full"
+                            width={24}
+                            height={24}
+                            className="rounded-full object-contain"
                           />
                           <span className="font-medium">{buyToken}</span>
                         </div>
@@ -341,12 +367,21 @@ export function SwapComponent() {
               className="w-full bg-purple-500 hover:bg-purple-600 text-white"
               onClick={handleSwap}
               disabled={
-                isLoading || network != WalletAdapterNetwork.Mainnet
+                isLoading ||
+                network != WalletAdapterNetwork.Mainnet ||
+                transactionStatus === "pending"
                   ? true
                   : false
               }
             >
-              Swap
+              {transactionStatus === "pending" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Swapping...
+                </>
+              ) : (
+                "Swap"
+              )}
             </Button>
             <div className="flex items-center justify-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
               <Clock className="w-4 h-4" />
@@ -355,6 +390,30 @@ export function SwapComponent() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {transactionStatus === "pending" && (
+        <Card className="mt-4 bg-blue-50 dark:bg-blue-900">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-blue-700 dark:text-blue-300">
+              Transaction in Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2 text-blue-600 dark:text-blue-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <p className="text-sm">
+                Your transaction is being processed. This may take a few
+                moments.
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter>
+            <p className="text-xs text-blue-500 dark:text-blue-300">
+              Please do not close this window or refresh the page.
+            </p>
+          </CardFooter>
+        </Card>
+      )}
 
       {transactionHash && (
         <Card className="mt-4 bg-gray-50 dark:bg-gray-700">
@@ -397,7 +456,8 @@ export function SwapComponent() {
             <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
               <AlertCircle className="w-5 h-5" />
               <p className="text-sm">
-                Your transaction has failed. Please try again{" "}
+                Your transaction has failed. Please try again or contact support
+                if the issue persists.
               </p>
             </div>
           </CardContent>
@@ -405,7 +465,10 @@ export function SwapComponent() {
             <Button
               variant="outline"
               className="w-full text-red-500 hover:bg-red-100 dark:hover:bg-red-800"
-              onClick={() => setTransactionFailed(false)}
+              onClick={() => {
+                setTransactionFailed(false);
+                setTransactionStatus("idle");
+              }}
             >
               Dismiss
             </Button>

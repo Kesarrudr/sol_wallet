@@ -1,4 +1,3 @@
-import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -7,10 +6,12 @@ import {
 } from "@/components/ui/dropdown-menu"; // Update with your actual import paths
 import { Button } from "./ui/button";
 import { Globe } from "lucide-react";
+import { useNetwork } from "@/app/NetworkContext";
+import { WalletAdapterNetwork } from "@/app/types";
 
 function NetworkDropdown() {
+  const { network, setNetwork } = useNetwork();
   const handleNetworkChange = (network: WalletAdapterNetwork) => {
-    console.log(network);
     setNetwork(network);
   };
 
@@ -23,7 +24,7 @@ function NetworkDropdown() {
           className="bg-white text-purple-500 hover:bg-gray-200"
         >
           <Globe className="mr-2 h-4 w-4" />
-          {network === "devnet" ? "Devnet" : "Mainnet"}
+          {network === WalletAdapterNetwork.Devnet ? "Devnet" : "Mainnet"}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
