@@ -1,51 +1,20 @@
-import { PublicKey } from "@solana/web3.js";
-import axios, { AxiosError } from "axios";
-import { toast } from "react-toastify";
+import { useConnection } from "@solana/wallet-adapter-react";
+import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
-const GetBalance = async (publickey: PublicKey) => {
-  const loadingToastId = toast.loading("Updating Balance....", {
-    position: "bottom-right",
-  });
-  try {
-    const respose = await axios.post(
-      "https://wallet-backend.kesartechnologies.software/balance",
-      {
-        publickey: publickey.toBase58(),
-      },
-    );
+const useGetBalance = () => {
+  const { connection } = useConnection();
 
-    toast.update(loadingToastId, {
-      render: "Balance Updated",
-      type: "success",
-      position: "bottom-right",
-      isLoading: false,
-      autoClose: 3000,
-    });
+  const getBalance = async (publickey: PublicKey) => {
+    try {
+      const balance = await connection.getBalance(publickey);
 
-    return respose.data.message;
-  } catch (error: unknown) {
-    if (error instanceof AxiosError && error.response && error.response.data) {
-      toast.error(`${error.response.data.message}`, {
-        position: "bottom-right",
-      });
-      toast.update(loadingToastId, {
-        render: `${error.response.data.message}`,
-        type: "error",
-        position: "bottom-right",
-        isLoading: false,
-        autoClose: 3000,
-      });
-    } else {
-      toast.update(loadingToastId, {
-        render: "Unexpected Error",
-        type: "error",
-        position: "bottom-right",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      return balance / LAMPORTS_PER_SOL;
+    } catch (error: unknown) {
+      return;
     }
-  } finally {
-  }
+  };
+
+  return { getBalance };
 };
 
-export default GetBalance;
+export { useGetBalance };

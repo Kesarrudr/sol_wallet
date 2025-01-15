@@ -4,16 +4,20 @@ import { RefreshCw } from "lucide-react";
 
 interface ProcessingCardProps {
   message?: string;
+  network: string;
 }
 
 const ProcessingCard: React.FC<ProcessingCardProps> = ({
   message = "Processing request...",
+  network,
 }) => {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="w-full max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-        <div className="bg-yellow-500 text-white text-center py-2 font-semibold">
-          Devnet Environment
+        <div
+          className={`text-white text-center py-2 font-semibold ${network === "devnet" ? "bg-yellow-500" : "bg-green-500"}`}
+        >
+          {network === "devnet" ? "Devnet" : "Mainnet"} Environment
         </div>
         <div className="p-6 flex flex-col items-center justify-center min-h-[200px] bg-gradient-to-r from-purple-50 to-indigo-50">
           <div className="flex flex-col items-center space-y-4">
