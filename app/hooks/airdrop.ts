@@ -20,10 +20,13 @@ const useAirDrop = () => {
     });
     try {
       setLoading(true);
-      const response = await axios.post("http://localhost:8989/airdrop", {
-        publickey: publicKey.toBase58(),
-        airdropamount: amount,
-      });
+      const response = await axios.post(
+        "https://wallet-backend.kesartechnologies.software/airdrop",
+        {
+          publickey: publicKey.toBase58(),
+          airdropamount: amount,
+        },
+      );
       toast.update(loadingToastId, {
         render: response.data.message,
         type: "success",
