@@ -1,6 +1,3 @@
-//TODO: use the loading state to update the balance
-//TODO change the url in the airdrop and get balance to the deployed server
-
 "use client";
 import { SwapComponent } from "@/components/components-swap";
 import ProcessingCard from "@/components/processing-card";
@@ -32,11 +29,14 @@ import {
   Transaction,
 } from "@solana/web3.js";
 import {
+  AlertCircle,
+  CheckCircle2,
   Copy,
   Droplet,
   ExternalLink,
   FileSignature,
   Globe,
+  Loader2,
   RefreshCw,
   Send,
   Wallet,
@@ -55,8 +55,6 @@ const Component = () => {
   const [activeTab, setActiveTab] = useState("airdrop");
   const [airdropAmount, setAirdropAmount] = useState("1");
   const [walletAddress, setWalletAddress] = useState("");
-  // const [message, setMessage] = useState("");
-  // const [signature, setSignature] = useState("");
   const [reciverAddress, setReciverAddress] = useState("");
   const [amount, setAmount] = useState("");
   const { loading: airdroploading, airdrop } = useAirDrop();
@@ -68,6 +66,15 @@ const Component = () => {
   const { network, setNetwork } = useNetwork();
   const { getBalance } = useGetBalance();
 
+  const [transactionHash, setTransactionHash] = useState("");
+  const [transactionStatus, setTransactionStatus] = useState<
+    | "idle"
+    | "processing"
+    | "confirmed"
+    | "finalized"
+    | "error"
+    | "not confirmed"
+  >("idle");
   const run = useCallback(
     async (key: PublicKey) => {
       if (key) {
@@ -132,7 +139,8 @@ const Component = () => {
   async function makePayment(event: React.MouseEvent<HTMLButtonElement>) {
     event.preventDefault();
     setShowCard(true);
-    const loadingTostid = toast.loading("Processing Payment...", {
+    setTransactionStatus("processing");
+    const loadingToastId = toast.loading("Processing Payment...", {
       position: "bottom-right",
     });
     try {
@@ -145,24 +153,55 @@ const Component = () => {
       );
       const {
         context: { slot: minContextSlot },
-        value: { blockhash, lastValidBlockHeight },
       } = await connection.getLatestBlockhashAndContext();
 
       const signature = await sendTransaction(transaction, connection, {
         minContextSlot,
       });
-      await connection.confirmTransaction({
-        blockhash,
-        lastValidBlockHeight,
-        signature,
-      });
-      toast.update(loadingTostid, {
-        render: "Payment Successfull",
-        type: "success",
-        position: "bottom-right",
-        isLoading: false,
-        autoClose: 3000,
-      });
+      setTransactionHash(signature);
+
+      const { value } = await connection.getSignatureStatus(signature);
+
+      if (value === null) {
+        setTransactionStatus("not confirmed");
+        toast.update(loadingToastId, {
+          render:
+            "Transaction can't be confirmed. Check blockchain before trying again",
+          type: "warning",
+          isLoading: false,
+          autoClose: 5000,
+        });
+      } else if (value.err) {
+        setTransactionStatus("error");
+        toast.update(loadingToastId, {
+          render: "Payment not Successful",
+          type: "error",
+          isLoading: false,
+          autoClose: 3000,
+        });
+      } else {
+        if (value.confirmationStatus === "processed") {
+          setTransactionStatus("processing");
+          toast.update(loadingToastId, {
+            render: "Payment is Processed",
+            type: "info",
+            isLoading: false,
+            autoClose: 3000,
+          });
+        } else if (
+          value.confirmationStatus === "confirmed" ||
+          value.confirmationStatus === "finalized"
+        ) {
+          setTransactionStatus(value.confirmationStatus);
+          toast.update(loadingToastId, {
+            render: "Payment Successful",
+            type: "success",
+            isLoading: false,
+            autoClose: 3000,
+          });
+        }
+      }
+
       setShowBalance(false);
       const newBal = await getBalance(publicKey!);
       setBalance(String(newBal));
@@ -170,17 +209,21 @@ const Component = () => {
       setAmount("");
       setShowBalance(true);
     } catch (error) {
-      toast.update(loadingTostid, {
-        render: "Transaction failed.Check bockChain before trying again",
+      console.error("Transaction error:", error);
+      setTransactionStatus("error");
+      toast.update(loadingToastId, {
+        render: "Transaction failed.",
         type: "error",
-        position: "bottom-right",
         isLoading: false,
         autoClose: 3000,
       });
     } finally {
       setShowCard(false);
+      setReciverAddress("");
+      setAmount("");
     }
   }
+
   const HandleAirdrop = async () => {
     if (publicKey) {
       const status = await airdrop(publicKey, airdropAmount);
@@ -239,7 +282,6 @@ const Component = () => {
   };
 
   const handleNetworkChange = async (newNetwork: WalletAdapterNetwork) => {
-    //TODO: when the get balance request fails the balance gets stuck in the Updating State
     setNetwork(newNetwork);
     if (publicKey) {
       setShowBalance(false);
@@ -384,129 +426,173 @@ const Component = () => {
           </CardHeader>
           <CardContent className="p-6">
             {connected ? (
-              <Tabs
-                value={activeTab}
-                onValueChange={setActiveTab}
-                className="w-full"
-              >
-                <TabsList className="grid grid-cols-3 gap-4 bg-gray-100 p-1 rounded-md">
-                  <TabsTrigger
-                    value="airdrop"
-                    className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
-                  >
-                    <Droplet className="w-4 h-4 mr-2" />
-                    AirDrop
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="send"
-                    className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Send
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="sign"
-                    className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
-                  >
-                    <FileSignature className="w-4 h-4 mr-2" />
-                    Swap
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="airdrop" className="mt-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex space-x-2 mb-4">
-                        <Input
-                          type="number"
-                          placeholder="Request for 1 (SOL)"
-                          onChange={(e) => setAirdropAmount(e.target.value)}
-                          className="flex-grow"
-                        />
-                        <Button
-                          className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white"
-                          onClick={() => HandleAirdrop()}
-                          disabled={
-                            airdroploading ||
-                            network === WalletAdapterNetwork.Mainnet
-                          }
-                        >
-                          Request Airdrop
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="send" className="mt-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <form className="space-y-4">
-                        <div>
-                          <Label htmlFor="recipient">Recipient Address</Label>
+              <>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  className="w-full"
+                >
+                  <TabsList className="grid grid-cols-3 gap-4 bg-gray-100 p-1 rounded-md">
+                    <TabsTrigger
+                      value="airdrop"
+                      className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                    >
+                      <Droplet className="w-4 h-4 mr-2" />
+                      AirDrop
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="send"
+                      className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Send
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="sign"
+                      className="data-[state=active]:bg-purple-500 data-[state=active]:text-white"
+                    >
+                      <FileSignature className="w-4 h-4 mr-2" />
+                      Swap
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="airdrop" className="mt-4">
+                    <Card>
+                      <CardContent className="pt-6">
+                        <div className="flex space-x-2 mb-4">
                           <Input
-                            id="recipient"
-                            placeholder="Enter Solana address"
-                            className="mt-1"
-                            value={reciverAddress}
-                            onChange={(e) => setReciverAddress(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="amount">Amount (SOL)</Label>
-                          <Input
-                            id="amount"
                             type="number"
-                            placeholder="0.00"
-                            className="mt-1"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
+                            placeholder="Request for 1 (SOL)"
+                            onChange={(e) => setAirdropAmount(e.target.value)}
+                            className="flex-grow"
                           />
+                          <Button
+                            className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white"
+                            onClick={() => HandleAirdrop()}
+                            disabled={
+                              airdroploading ||
+                              network === WalletAdapterNetwork.Mainnet
+                            }
+                          >
+                            Request Airdrop
+                          </Button>
                         </div>
-                        <Button
-                          type="submit"
-                          className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white"
-                          onClick={makePayment}
-                        >
-                          Send SOL
-                        </Button>
-                      </form>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  <TabsContent value="send" className="mt-4">
+                    <Card>
+                      <CardContent className="pt-6">
+                        <form className="space-y-4">
+                          <div>
+                            <Label htmlFor="recipient">Recipient Address</Label>
+                            <Input
+                              id="recipient"
+                              placeholder="Enter Solana address"
+                              className="mt-1"
+                              value={reciverAddress}
+                              onChange={(e) =>
+                                setReciverAddress(e.target.value)
+                              }
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="amount">Amount (SOL)</Label>
+                            <Input
+                              id="amount"
+                              type="number"
+                              placeholder="0.00"
+                              className="mt-1"
+                              value={amount}
+                              onChange={(e) => setAmount(e.target.value)}
+                            />
+                          </div>
+                          <Button
+                            type="submit"
+                            className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white"
+                            onClick={makePayment}
+                          >
+                            Send SOL
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                  <TabsContent value="sign" className="mt-4">
+                    <Card>
+                      <CardContent className="pt-6">
+                        <SwapComponent />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+
+                {transactionStatus !== "idle" && (
+                  <Card className="mt-4 bg-gray-50 dark:bg-gray-800">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-semibold">
+                        Transaction Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {transactionStatus === "processing" && (
+                        <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <p>Processing transaction...</p>
+                        </div>
+                      )}
+                      {transactionStatus === "confirmed" && (
+                        <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <p>Transaction confirmed</p>
+                        </div>
+                      )}
+                      {transactionStatus === "finalized" && (
+                        <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <p>Transaction finalized</p>
+                        </div>
+                      )}
+                      {transactionStatus === "error" && (
+                        <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
+                          <AlertCircle className="w-5 h-5" />
+                          <p>Transaction failed</p>
+                        </div>
+                      )}
+                      {transactionStatus === "not confirmed" && (
+                        <div className="flex items-center space-x-2 text-orange-600 dark:text-orange-400">
+                          <AlertCircle className="w-5 h-5" />
+                          <p>
+                            Transaction can&apos;t be confirmed. Check Before
+                            trying again
+                          </p>
+                        </div>
+                      )}
+                      {transactionHash && (
+                        <div className="mt-2">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Transaction Hash: {transactionHash.slice(0, 8)}...
+                            {transactionHash.slice(-8)}
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() =>
+                              window.open(
+                                `https://explorer.solana.com/tx/${transactionHash}?cluster=${network === WalletAdapterNetwork.Devnet ? "devnet" : "mainnet"}`,
+                                "_blank",
+                              )
+                            }
+                          >
+                            View on Explorer
+                            <ExternalLink className="ml-2 h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                </TabsContent>
-                <TabsContent value="sign" className="mt-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <SwapComponent />
-                      {/* <Input */}
-                      {/*   placeholder="Enter message to sign" */}
-                      {/*   className="mb-4" */}
-                      {/*   value={message} */}
-                      {/*   onChange={(e) => setMessage(e.target.value)} */}
-                      {/* /> */}
-                      {/* <Button */}
-                      {/*   className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white" */}
-                      {/*   onClick={sign} */}
-                      {/*   disabled={verifyloading} */}
-                      {/* > */}
-                      {/*   Sign Message */}
-                      {/* </Button> */}
-                      {/* {signature ? ( */}
-                      {/*   <div className="mt-4 bg-gray-50 rounded-md p-4 border border-gray-200"> */}
-                      {/*     <label className="block text-sm font-medium text-gray-700 mb-2"> */}
-                      {/*       Signature: */}
-                      {/*     </label> */}
-                      {/*     <ScrollArea className="h-24 w-full rounded-md border border-gray-200 bg-white"> */}
-                      {/*       <div className="p-4"> */}
-                      {/*         <p className="text-sm text-gray-800 break-all font-mono leading-relaxed"> */}
-                      {/*           {signature} */}
-                      {/*         </p> */}
-                      {/*       </div> */}
-                      {/*     </ScrollArea> */}
-                      {/*   </div> */}
-                      {/* ) : null} */}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                )}
+              </>
             ) : (
               <CustomWalletConnectButton />
             )}
